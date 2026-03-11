@@ -1,0 +1,134 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Lora:ital,wght@0,400..700;1,400..700&family=IBM+Plex+Mono:ital,wght@0,100..700;1,100..700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Softball Sport Theme - Energetic Coral & Navy */
+    --primary: 350 85% 55%;        /* Coral Red #E11D48 */
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 350 85% 65%;
+    
+    --secondary: 215 50% 23%;      /* Navy Blue #1E3A5F */
+    --secondary-foreground: 0 0% 100%;
+    
+    --accent: 38 95% 55%;          /* Golden Amber #F59E0B */
+    --accent-foreground: 0 0% 0%;
+    
+    --background: 210 40% 98%;
+    --foreground: 215 25% 15%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 15%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 15%;
+    
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 15% 45%;
+    
+    --destructive: 0 84% 50%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 210 15% 85%;
+    --input: 210 15% 85%;
+    --ring: 350 85% 55%;
+    
+    --chart-1: 350 85% 55%;
+    --chart-2: 215 50% 23%;
+    --chart-3: 38 95% 55%;
+    --chart-4: 170 60% 45%;
+    --chart-5: 280 60% 60%;
+    
+    --sidebar: 215 50% 23%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 350 85% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 38 95% 55%;
+    --sidebar-accent-foreground: 0 0% 0%;
+    --sidebar-border: 215 40% 30%;
+    --sidebar-ring: 350 85% 55%;
+    
+    --font-sans: DM Sans, sans-serif;
+    --font-serif: Lora, serif;
+    --font-mono: IBM Plex Mono, monospace;
+    
+    --shadow-2xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
+    --shadow-xs: 0px 4px 8px -1px hsl(0 0% 0% / 0.05);
+    --shadow-sm: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 1px 2px -2px hsl(0 0% 0% / 0.10);
+    --shadow: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 1px 2px -2px hsl(0 0% 0% / 0.10);
+    --shadow-md: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 2px 4px -2px hsl(0 0% 0% / 0.10);
+    --shadow-lg: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 4px 6px -2px hsl(0 0% 0% / 0.10);
+    --shadow-xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.10), 0px 8px 10px -2px hsl(0 0% 0% / 0.10);
+    --shadow-2xl: 0px 4px 8px -1px hsl(0 0% 0% / 0.25);
+    
+    --tracking-normal: 0em;
+    --spacing: 0.25rem;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 215 35% 10%;
+    --foreground: 210 20% 90%;
+    --card: 215 30% 15%;
+    --card-foreground: 210 20% 90%;
+    --popover: 215 30% 15%;
+    --popover-foreground: 210 20% 90%;
+    --primary: 350 85% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 215 40% 25%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 215 25% 18%;
+    --muted-foreground: 215 10% 60%;
+    --accent: 38 95% 55%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 84% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 215 20% 25%;
+    --input: 215 20% 25%;
+    --ring: 350 85% 60%;
+    
+    --chart-1: 350 85% 60%;
+    --chart-2: 215 40% 25%;
+    --chart-3: 38 95% 55%;
+    --chart-4: 170 60% 45%;
+    --chart-5: 280 60% 60%;
+    
+    --sidebar: 215 30% 12%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-primary: 350 85% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 38 95% 55%;
+    --sidebar-accent-foreground: 0 0% 0%;
+    --sidebar-border: 215 20% 20%;
+    --sidebar-ring: 350 85% 60%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    letter-spacing: var(--tracking-normal);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
