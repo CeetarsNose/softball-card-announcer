@@ -25,9 +25,12 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
   const [isEditingNumber, setIsEditingNumber] = useState(!initialNumber)
   
   // AI Mode state
-  const [aiMode, setAiMode] = useState(true) // true = Whisper API, false = User Recording
+  const [aiMode, setAiMode] = useState(true) // true = AI Announcement (TTS), false = User Recording
   const [isRecording, setIsRecording] = useState(false)
-  const [isTranscribing, setIsTranscribing] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
+  
+  // Cache for generated announcements
+  const announcementCache = useRef<Map<string, string>>(new Map())
   
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -104,6 +107,59 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
     setAudioUrl('')
   }
 
+  // Generate AI announcement using Text-to-Speech
+  const generateAnnouncement = async () => {
+    if (!name || !number) {
+      toast.error('Please add both player number and name first')
+      return
+    }
+
+    setIsGenerating(true)
+    try {
+      // Check cache first
+      const cacheKey = `${number}-${name}`
+      const cachedUrl = announcementCache.current.get(cacheKey)
+      
+      if (cachedUrl) {
+        setAudioUrl(cachedUrl)
+        toast.success('Playing cached announcement!')
+        return
+      }
+
+      // Generate announcement text
+      const announcementText = `Now Batting, Number ${number}, ${name}`
+      
+      // Generate speech using Blink AI
+      const { url } = await blink.ai.generateSpeech({
+        text: announcementText,
+        voice: 'nova'
+      })
+      
+      // Upload to storage to get a permanent URL
+      const safeId = id.replace(/[^a-zA-Z0-9]/g, '-')
+      const path = `announcement-${safeId}-${Date.now()}.mp3`
+      
+      // Convert URL to blob and upload
+      const response = await fetch(url)
+      const audioBlob = await response.blob()
+      const audioFile = new File([audioBlob], 'announcement.mp3', { type: 'audio/mp3' })
+      
+      const { publicUrl } = await blink.storage.upload(audioFile, path)
+      
+      // Cache it
+      announcementCache.current.set(cacheKey, publicUrl)
+      
+      setAudioUrl(publicUrl)
+      toast.success('Announcement generated!')
+    } catch (error: unknown) {
+      console.error('Generation failed:', error)
+      const msg = error instanceof Error ? error.message : String(error)
+      toast.error(`Failed to generate: ${msg}`)
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
   // Start/stop recording
   const toggleRecording = async () => {
     if (isRecording) {
@@ -129,14 +185,7 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
         
         recorder.onstop = async () => {
           const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' })
-          
-          if (aiMode) {
-            // AI Mode: Transcribe with Whisper and extract name/number
-            await processTranscription(audioBlob)
-          } else {
-            // User Recording Mode: Save as walkup music
-            await saveRecordedAudio(audioBlob)
-          }
+          await saveRecordedAudio(audioBlob)
         }
         
         recorder.start()
@@ -148,81 +197,6 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
     }
   }
 
-  // Process transcription with Whisper API
-  const processTranscription = async (audioBlob: Blob) => {
-    setIsTranscribing(true)
-    try {
-      // Convert blob to base64
-      const base64 = await blobToBase64(audioBlob)
-      
-      // Transcribe with Whisper
-      const { text } = await blink.ai.transcribeAudio({
-        audio: base64,
-        language: 'en'
-      })
-      
-      toast.success(`Transcribed: "${text}"`)
-      
-      // Parse name and number from transcription
-      const parsed = parseAnnouncement(text)
-      
-      if (parsed) {
-        if (parsed.number) {
-          setNumber(parsed.number)
-          setIsEditingNumber(false)
-        }
-        if (parsed.name) {
-          setName(parsed.name)
-          setIsEditingName(false)
-        }
-        toast.success(`Extracted: #${parsed.number} ${parsed.name}`)
-      } else {
-        toast.error('Could not extract name/number. Try speaking clearly.')
-      }
-    } catch (error: unknown) {
-      console.error('Transcription failed:', error)
-      const msg = error instanceof Error ? error.message : String(error)
-      toast.error(`Transcription failed: ${msg}`)
-    } finally {
-      setIsTranscribing(false)
-      chunksRef.current = []
-    }
-  }
-
-  // Parse "Now Batting Number X Name" or "Number X Name" from text
-  const parseAnnouncement = (text: string): { number?: string; name?: string } => {
-    const result: { number?: string; name?: string } = {}
-    const lowerText = text.toLowerCase()
-    
-    // Look for number pattern (digit or word number)
-    const numberMatch = lowerText.match(/(?:number\s*|#|no\.?)\s*(\d+)|(\d+)/i)
-    if (numberMatch) {
-      result.number = numberMatch[1] || numberMatch[2]
-    }
-    
-    // Remove known phrases to get the name
-    let nameText = lowerText
-      .replace(/now\s*batting/i, '')
-      .replace(/number\s*\d+/i, '')
-      .replace(/#\d+/i, '')
-      .replace(/no\.?\s*\d+/i, '')
-      .replace(/[0-9]/g, '')
-      .trim()
-    
-    // Clean up common words
-    nameText = nameText
-      .replace(/^(is\s+)?(the\s+)?(player\s+)?/i, '')
-      .replace(/\s+(is\s+)?(the\s+)?(player\s+)?$/i, '')
-      .trim()
-    
-    if (nameText.length > 0 && nameText.length < 30) {
-      // Capitalize first letter of each word
-      result.name = nameText.replace(/\b\w/g, c => c.toUpperCase())
-    }
-    
-    return result
-  }
-
   // Save recorded audio as walkup music
   const saveRecordedAudio = async (audioBlob: Blob) => {
     setIsUploading(true)
@@ -230,7 +204,6 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
       const safeId = id.replace(/[^a-zA-Z0-9]/g, '-')
       const path = `walkup-${safeId}-${Date.now()}.webm`
       
-      // Convert blob to file
       const file = new File([audioBlob], 'recording.webm', { type: 'audio/webm' })
       
       const { publicUrl } = await blink.storage.upload(file, path)
@@ -246,18 +219,6 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
     }
   }
 
-  const blobToBase64 = (blob: Blob): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => {
-        const dataUrl = reader.result as string
-        resolve(dataUrl.split(',')[1])
-      }
-      reader.onerror = reject
-      reader.readAsDataURL(blob)
-    })
-  }
-
   return (
     <Card className="group relative overflow-hidden border-2 border-transparent hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 bg-gradient-to-br from-card to-muted/30">
       <CardContent className="p-0">
@@ -270,7 +231,7 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
               <Mic className="w-4 h-4 text-primary" />
             )}
             <Label htmlFor={`ai-mode-${id}`} className="text-xs font-medium cursor-pointer">
-              {aiMode ? 'AI Mode' : 'Record Mode'}
+              {aiMode ? 'AI Announcement' : 'Record Voice'}
             </Label>
             <Switch
               id={`ai-mode-${id}`}
@@ -281,8 +242,8 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
           <Button
             size="sm"
             variant={isRecording ? "destructive" : "outline"}
-            onClick={toggleRecording}
-            disabled={isUploading || isTranscribing}
+            onClick={aiMode ? generateAnnouncement : toggleRecording}
+            disabled={isUploading || isGenerating || isRecording}
             className="h-8 px-3 rounded-full"
           >
             {isRecording ? (
@@ -290,15 +251,29 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
                 <MicOff className="w-3 h-3 mr-1" />
                 Stop
               </>
-            ) : isTranscribing ? (
+            ) : isGenerating ? (
               <>
-                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" />
-                Processing...
+                <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin mr-1" />
+                Generating...
+              </>
+            ) : isUploading ? (
+              <>
+                <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin mr-1" />
+                Saving...
               </>
             ) : (
               <>
-                <Mic className="w-3 h-3 mr-1" />
-                {aiMode ? 'Speak Name & #' : 'Record Voice'}
+                {aiMode ? (
+                  <>
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    Generate
+                  </>
+                ) : (
+                  <>
+                    <Mic className="w-3 h-3 mr-1" />
+                    Record
+                  </>
+                )}
               </>
             )}
           </Button>
@@ -395,7 +370,7 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground text-center truncate">
-                Audio uploaded
+                {announcementCache.has(`${number}-${name}`) ? 'AI Announcement (cached)' : 'Audio ready'}
               </p>
             </>
           ) : (
