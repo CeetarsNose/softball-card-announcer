@@ -23,20 +23,32 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
   const [isUploading, setIsUploading] = useState(false)
   const [isEditingName, setIsEditingName] = useState(!initialName)
   const [isEditingNumber, setIsEditingNumber] = useState(!initialNumber)
-  
-  // AI Mode state
-  const [aiMode, setAiMode] = useState(true) // true = AI Announcement (TTS), false = User Recording
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  // Announcement mode: true = AI TTS, false = User Recording
+  const [aiMode, setAiMode] = useState(true)
   const [isRecording, setIsRecording] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
-  
-  // Cache for generated announcements
+
+  // Cache: "number-name" -> generated audio URL
   const announcementCache = useRef<Map<string, string>>(new Map())
-  
+
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const announcementAudioRef = useRef<HTMLAudioElement | null>(null)
+  const [isAnnouncementPlaying, setIsAnnouncementPlaying] = useState(false)
+
   const fileInputRef = useRef<HTMLInputElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const chunksRef = useRef<Blob[]>([])
+
+  // Track auth state
+  useEffect(() => {
+    const unsubscribe = blink.auth.onAuthStateChanged((state) => {
+      setIsAuthenticated(state.isAuthenticated)
+    })
+    return unsubscribe
+  }, [])
 
   // Cleanup recording on unmount
   useEffect(() => {
@@ -75,15 +87,12 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
       toast.error(`Upload failed: ${msg}`)
     } finally {
       setIsUploading(false)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
   const handlePlay = () => {
     if (!audioRef.current || !audioUrl) return
-
     if (isPlaying) {
       audioRef.current.pause()
       audioRef.current.currentTime = 0
@@ -94,9 +103,7 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
     }
   }
 
-  const handleAudioEnded = () => {
-    setIsPlaying(false)
-  }
+  const handleAudioEnded = () => setIsPlaying(false)
 
   const handleRemoveAudio = () => {
     if (audioRef.current) {
@@ -114,80 +121,91 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
       return
     }
 
+    // Require auth — redirect to login if not signed in
+    if (!isAuthenticated) {
+      toast('Sign in to use AI announcements', { icon: '🔒' })
+      blink.auth.login(window.location.href)
+      return
+    }
+
+    const cacheKey = `${number}-${name}`
+
+    // Return cached audio immediately if available
+    if (announcementCache.current.has(cacheKey)) {
+      playAnnouncementUrl(announcementCache.current.get(cacheKey)!)
+      toast.success('Playing cached announcement!')
+      return
+    }
+
     setIsGenerating(true)
     try {
-      // Check cache first
-      const cacheKey = `${number}-${name}`
-      const cachedUrl = announcementCache.current.get(cacheKey)
-      
-      if (cachedUrl) {
-        setAudioUrl(cachedUrl)
-        toast.success('Playing cached announcement!')
-        return
-      }
-
-      // Generate announcement text
       const announcementText = `Now Batting, Number ${number}, ${name}`
-      
-      // Generate speech using Blink AI
+
       const { url } = await blink.ai.generateSpeech({
         text: announcementText,
-        voice: 'nova'
+        voice: 'onyx',
       })
-      
-      // Upload to storage to get a permanent URL
-      const safeId = id.replace(/[^a-zA-Z0-9]/g, '-')
-      const path = `announcement-${safeId}-${Date.now()}.mp3`
-      
-      // Convert URL to blob and upload
-      const response = await fetch(url)
-      const audioBlob = await response.blob()
-      const audioFile = new File([audioBlob], 'announcement.mp3', { type: 'audio/mp3' })
-      
-      const { publicUrl } = await blink.storage.upload(audioFile, path)
-      
-      // Cache it
-      announcementCache.current.set(cacheKey, publicUrl)
-      
-      setAudioUrl(publicUrl)
-      toast.success('Announcement generated!')
+
+      // Cache the URL and play it
+      announcementCache.current.set(cacheKey, url)
+      playAnnouncementUrl(url)
+      toast.success('Announcement ready!')
     } catch (error: unknown) {
       console.error('Generation failed:', error)
-      const msg = error instanceof Error ? error.message : String(error)
-      toast.error(`Failed to generate: ${msg}`)
+      // If auth error slipped through, trigger login
+      const isAuthErr =
+        (error as { code?: string })?.code === 'HTTP 401' ||
+        (error as { message?: string })?.message?.includes('401') ||
+        (error as { details?: { originalError?: { code?: string } } })?.details?.originalError?.code === 'HTTP 401'
+      if (isAuthErr) {
+        toast('Sign in required for AI announcements', { icon: '🔒' })
+        blink.auth.login(window.location.href)
+      } else {
+        const msg = error instanceof Error ? error.message : String(error)
+        toast.error(`Failed to generate: ${msg}`)
+      }
     } finally {
       setIsGenerating(false)
     }
   }
 
-  // Start/stop recording
+  const playAnnouncementUrl = (url: string) => {
+    if (announcementAudioRef.current) {
+      announcementAudioRef.current.pause()
+      announcementAudioRef.current = null
+    }
+    const audio = new Audio(url)
+    announcementAudioRef.current = audio
+    audio.onplay = () => setIsAnnouncementPlaying(true)
+    audio.onended = () => setIsAnnouncementPlaying(false)
+    audio.onerror = () => setIsAnnouncementPlaying(false)
+    audio.play()
+  }
+
+  // Start/stop recording for Record mode
   const toggleRecording = async () => {
     if (isRecording) {
-      // Stop recording
       mediaRecorderRef.current?.stop()
       streamRef.current?.getTracks().forEach(track => track.stop())
       setIsRecording(false)
     } else {
-      // Start recording
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
         streamRef.current = stream
-        
+
         const recorder = new MediaRecorder(stream)
         mediaRecorderRef.current = recorder
         chunksRef.current = []
-        
+
         recorder.ondataavailable = (e) => {
-          if (e.data.size > 0) {
-            chunksRef.current.push(e.data)
-          }
+          if (e.data.size > 0) chunksRef.current.push(e.data)
         }
-        
+
         recorder.onstop = async () => {
           const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' })
           await saveRecordedAudio(audioBlob)
         }
-        
+
         recorder.start()
         setIsRecording(true)
       } catch (error) {
@@ -197,15 +215,12 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
     }
   }
 
-  // Save recorded audio as walkup music
   const saveRecordedAudio = async (audioBlob: Blob) => {
     setIsUploading(true)
     try {
       const safeId = id.replace(/[^a-zA-Z0-9]/g, '-')
       const path = `walkup-${safeId}-${Date.now()}.webm`
-      
       const file = new File([audioBlob], 'recording.webm', { type: 'audio/webm' })
-      
       const { publicUrl } = await blink.storage.upload(file, path)
       setAudioUrl(publicUrl)
       toast.success('Walkup music recorded!')
@@ -219,10 +234,13 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
     }
   }
 
+  const cacheKey = `${number}-${name}`
+  const isCached = announcementCache.current.has(cacheKey)
+
   return (
     <Card className="group relative overflow-hidden border-2 border-transparent hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 bg-gradient-to-br from-card to-muted/30">
       <CardContent className="p-0">
-        {/* AI/Recording Toggle - Top of Card */}
+        {/* Announcement Toggle Bar */}
         <div className="p-3 bg-muted/30 border-b flex items-center justify-between">
           <div className="flex items-center gap-2">
             {aiMode ? (
@@ -230,7 +248,7 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
             ) : (
               <Mic className="w-4 h-4 text-primary" />
             )}
-            <Label htmlFor={`ai-mode-${id}`} className="text-xs font-medium cursor-pointer">
+            <Label htmlFor={`ai-mode-${id}`} className="text-xs font-medium cursor-pointer select-none">
               {aiMode ? 'AI Announcement' : 'Record Voice'}
             </Label>
             <Switch
@@ -239,44 +257,63 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
               onCheckedChange={setAiMode}
             />
           </div>
-          <Button
-            size="sm"
-            variant={isRecording ? "destructive" : "outline"}
-            onClick={aiMode ? generateAnnouncement : toggleRecording}
-            disabled={isUploading || isGenerating || isRecording}
-            className="h-8 px-3 rounded-full"
-          >
-            {isRecording ? (
-              <>
-                <MicOff className="w-3 h-3 mr-1" />
-                Stop
-              </>
-            ) : isGenerating ? (
-              <>
-                <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin mr-1" />
-                Generating...
-              </>
-            ) : isUploading ? (
-              <>
-                <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin mr-1" />
-                Saving...
-              </>
-            ) : (
-              <>
-                {aiMode ? (
-                  <>
-                    <Sparkles className="w-3 h-3 mr-1" />
-                    Generate
-                  </>
-                ) : (
-                  <>
-                    <Mic className="w-3 h-3 mr-1" />
-                    Record
-                  </>
-                )}
-              </>
-            )}
-          </Button>
+
+          {aiMode ? (
+            <Button
+              size="sm"
+              variant={isAnnouncementPlaying ? 'default' : isCached ? 'secondary' : 'outline'}
+              onClick={generateAnnouncement}
+              disabled={isGenerating}
+              className="h-8 px-3 rounded-full"
+            >
+              {isGenerating ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
+                  Generating...
+                </>
+              ) : isAnnouncementPlaying ? (
+                <>
+                  <Sparkles className="w-3 h-3 mr-1 animate-pulse" />
+                  Playing...
+                </>
+              ) : isCached ? (
+                <>
+                  <Play className="w-3 h-3 mr-1" />
+                  Announce
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  Generate
+                </>
+              )}
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant={isRecording ? 'destructive' : 'outline'}
+              onClick={toggleRecording}
+              disabled={isUploading}
+              className="h-8 px-3 rounded-full"
+            >
+              {isRecording ? (
+                <>
+                  <MicOff className="w-3 h-3 mr-1" />
+                  Stop
+                </>
+              ) : isUploading ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Mic className="w-3 h-3 mr-1" />
+                  Record
+                </>
+              )}
+            </Button>
+          )}
         </div>
 
         {/* Card Header - Navy Background */}
@@ -286,7 +323,7 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
               <Music className="w-8 h-8 text-accent" />
             </div>
           </div>
-          
+
           {/* Player Number */}
           <div className="mb-2">
             {isEditingNumber ? (
@@ -335,7 +372,7 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
           </div>
         </div>
 
-        {/* Audio Controls */}
+        {/* Walkup Music Controls */}
         <div className="p-4 space-y-3">
           {audioUrl ? (
             <>
@@ -349,15 +386,9 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
                   }`}
                 >
                   {isPlaying ? (
-                    <>
-                      <Pause className="w-5 h-5 mr-2" />
-                      Playing...
-                    </>
+                    <><Pause className="w-5 h-5 mr-2" />Playing...</>
                   ) : (
-                    <>
-                      <Play className="w-5 h-5 mr-2" />
-                      Play Walkup
-                    </>
+                    <><Play className="w-5 h-5 mr-2" />Play Walkup</>
                   )}
                 </Button>
                 <Button
@@ -370,7 +401,7 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground text-center truncate">
-                {announcementCache.has(`${number}-${name}`) ? 'AI Announcement (cached)' : 'Audio ready'}
+                Audio ready
               </p>
             </>
           ) : (
@@ -394,10 +425,7 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
                     Uploading...
                   </>
                 ) : (
-                  <>
-                    <Upload className="w-4 h-4 mr-2" />
-                    Upload Walkup Music
-                  </>
+                  <><Upload className="w-4 h-4 mr-2" />Upload Walkup Music</>
                 )}
               </Button>
               <p className="text-xs text-muted-foreground text-center mt-2">
@@ -407,13 +435,9 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
           )}
         </div>
 
-        {/* Hidden Audio Element */}
+        {/* Hidden Audio Element for walkup music */}
         {audioUrl && (
-          <audio
-            ref={audioRef}
-            src={audioUrl}
-            onEnded={handleAudioEnded}
-          />
+          <audio ref={audioRef} src={audioUrl} onEnded={handleAudioEnded} />
         )}
       </CardContent>
     </Card>
