@@ -26,12 +26,11 @@ function App() {
               />
             </div>
             <div className="text-center md:text-left">
-              <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white uppercase italic">
+              <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white uppercase italic leading-none">
                 Midland Park <span className="text-primary">Softball</span>
               </h1>
-              <div className="h-1 w-full bg-primary mt-1 md:mt-2" />
-              <p className="text-xl md:text-2xl font-bold text-primary tracking-widest uppercase mt-2">
-                Walkup Music Manager
+              <p className="text-2xl md:text-4xl font-black text-primary tracking-widest uppercase italic mt-1">
+                Walkup Music
               </p>
             </div>
           </div>
@@ -40,20 +39,39 @@ function App() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-12">
+        {/* Banner Strip */}
+        <div className="bg-primary text-black py-2 px-4 mb-12 transform -skew-x-12 shadow-[0_5px_15px_rgba(100,255,0,0.3)]">
+          <p className="text-center font-black uppercase tracking-[0.5em] italic animate-pulse">
+            Official Walkup Music Controller
+          </p>
+        </div>
+
         {/* Instructions */}
-        <div className="bg-card rounded-2xl p-6 mb-12 shadow-xl border-2 border-primary/20 backdrop-blur-sm">
-          <div className="flex items-start gap-4">
-            <div className="p-3 bg-primary/20 rounded-xl">
-              <Volume2 className="w-6 h-6 text-primary" />
+        <div className="bg-zinc-900 rounded-2xl p-8 mb-12 shadow-2xl border-l-8 border-primary overflow-hidden relative">
+          <div className="absolute top-0 right-0 p-4 opacity-10">
+            <Trophy className="w-24 h-24 text-white" />
+          </div>
+          <div className="flex items-start gap-6 relative z-10">
+            <div className="p-4 bg-primary/20 rounded-2xl border border-primary/30">
+              <Volume2 className="w-8 h-8 text-primary" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-primary uppercase tracking-wider mb-2">Game Day Operations</h3>
-              <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-muted-foreground font-medium italic">
-                <li className="flex items-center gap-2"><span className="text-primary">●</span> Tap Number/Name to edit</li>
-                <li className="flex items-center gap-2"><span className="text-primary">●</span> Use AI mode for quick announcements</li>
-                <li className="flex items-center gap-2"><span className="text-primary">●</span> Upload or Record custom audio</li>
-                <li className="flex items-center gap-2"><span className="text-primary">●</span> Play buttons for instant lineup walkups</li>
-              </ul>
+              <h3 className="text-2xl font-black text-white uppercase tracking-tighter mb-4 italic">
+                Game Day <span className="text-primary">Operations</span>
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
+                {[
+                  { label: 'EDIT PLAYER', desc: 'Tap Number/Name to customize card' },
+                  { label: 'AI ANNOUNCE', desc: 'Auto-generate "Now Batting" voice' },
+                  { label: 'CUSTOM AUDIO', desc: 'Upload or Record walkup tracks' },
+                  { label: 'INSTANT PLAY', desc: 'Launch music with a single tap' }
+                ].map((item, i) => (
+                  <div key={i} className="flex flex-col border-l-2 border-primary/20 pl-4 py-1 hover:border-primary transition-colors">
+                    <span className="text-xs font-black text-primary tracking-widest">{item.label}</span>
+                    <span className="text-sm font-medium text-zinc-400 italic">{item.desc}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
