@@ -6,50 +6,50 @@
 
 @layer base {
   :root {
-    /* Softball Sport Theme - Energetic Coral & Navy */
-    --primary: 350 85% 55%;        /* Coral Red #E11D48 */
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: 350 85% 65%;
+    /* Panthers Theme - Black & Vibrant Lime Green */
+    --primary: 100 100% 50%;        /* Vibrant Lime Green */
+    --primary-foreground: 0 0% 0%;
+    --primary-glow: 100 100% 65%;
     
-    --secondary: 215 50% 23%;      /* Navy Blue #1E3A5F */
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 0 0% 100%;        /* White */
+    --secondary-foreground: 0 0% 0%;
     
-    --accent: 38 95% 55%;          /* Golden Amber #F59E0B */
+    --accent: 100 100% 50%;        /* Vibrant Lime Green */
     --accent-foreground: 0 0% 0%;
     
-    --background: 210 40% 98%;
-    --foreground: 215 25% 15%;
+    --background: 0 0% 0%;         /* Black */
+    --foreground: 0 0% 100%;       /* White */
     
-    --card: 0 0% 100%;
-    --card-foreground: 215 25% 15%;
+    --card: 0 0% 8%;               /* Dark Gray Card */
+    --card-foreground: 0 0% 100%;
     
-    --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 15%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 100%;
     
-    --muted: 210 20% 96%;
-    --muted-foreground: 215 15% 45%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 70%;
     
-    --destructive: 0 84% 50%;
+    --destructive: 0 100% 50%;
     --destructive-foreground: 0 0% 100%;
     
-    --border: 210 15% 85%;
-    --input: 210 15% 85%;
-    --ring: 350 85% 55%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 100 100% 50%;
     
-    --chart-1: 350 85% 55%;
-    --chart-2: 215 50% 23%;
-    --chart-3: 38 95% 55%;
-    --chart-4: 170 60% 45%;
-    --chart-5: 280 60% 60%;
+    --chart-1: 100 100% 50%;
+    --chart-2: 0 0% 100%;
+    --chart-3: 0 0% 50%;
+    --chart-4: 100 100% 30%;
+    --chart-5: 0 0% 30%;
     
-    --sidebar: 215 50% 23%;
+    --sidebar: 0 0% 5%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 350 85% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 38 95% 55%;
-    --sidebar-accent-foreground: 0 0% 0%;
-    --sidebar-border: 215 40% 30%;
-    --sidebar-ring: 350 85% 55%;
+    --sidebar-primary: 100 100% 50%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 100 100% 50%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 100 100% 50%;
     
     --font-sans: DM Sans, sans-serif;
     --font-serif: Lora, serif;
@@ -70,40 +70,40 @@
   }
 
   .dark {
-    --background: 215 35% 10%;
-    --foreground: 210 20% 90%;
-    --card: 215 30% 15%;
-    --card-foreground: 210 20% 90%;
-    --popover: 215 30% 15%;
-    --popover-foreground: 210 20% 90%;
-    --primary: 350 85% 60%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 215 40% 25%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 215 25% 18%;
-    --muted-foreground: 215 10% 60%;
-    --accent: 38 95% 55%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 100 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 100%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 70%;
+    --accent: 100 100% 50%;
     --accent-foreground: 0 0% 0%;
-    --destructive: 0 84% 50%;
+    --destructive: 0 100% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 215 20% 25%;
-    --input: 215 20% 25%;
-    --ring: 350 85% 60%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 100 100% 50%;
     
-    --chart-1: 350 85% 60%;
-    --chart-2: 215 40% 25%;
-    --chart-3: 38 95% 55%;
-    --chart-4: 170 60% 45%;
-    --chart-5: 280 60% 60%;
+    --chart-1: 100 100% 50%;
+    --chart-2: 0 0% 100%;
+    --chart-3: 0 0% 50%;
+    --chart-4: 100 100% 30%;
+    --chart-5: 0 0% 30%;
     
-    --sidebar: 215 30% 12%;
-    --sidebar-foreground: 210 20% 90%;
-    --sidebar-primary: 350 85% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 38 95% 55%;
-    --sidebar-accent-foreground: 0 0% 0%;
-    --sidebar-border: 215 20% 20%;
-    --sidebar-ring: 350 85% 60%;
+    --sidebar: 0 0% 5%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 100 100% 50%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 100 100% 50%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 100 100% 50%;
   }
 
   * {
