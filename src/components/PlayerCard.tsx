@@ -19,6 +19,7 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
   const [name, setName] = useState(initialName)
   const [number, setNumber] = useState(initialNumber)
   const [audioUrl, setAudioUrl] = useState(initialAudioUrl)
+  const [audioFileName, setAudioFileName] = useState('')
   const [isPlaying, setIsPlaying] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [isEditingName, setIsEditingName] = useState(!initialName)
@@ -80,6 +81,7 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
       const path = `walkup-${safeId}-${Date.now()}.${ext}`
       const { publicUrl } = await blink.storage.upload(file, path)
       setAudioUrl(publicUrl)
+      setAudioFileName(file.name)
       toast.success('Walkup music uploaded!')
     } catch (error: unknown) {
       console.error('Upload failed:', error)
@@ -112,6 +114,7 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
     }
     setIsPlaying(false)
     setAudioUrl('')
+    setAudioFileName('')
   }
 
   // Generate AI announcement using Text-to-Speech
@@ -139,12 +142,21 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
 
     setIsGenerating(true)
     try {
-      const announcementText = `Now Batting, Number ${number}, ${name}`
-
-      const { url } = await blink.ai.generateSpeech({
-        text: announcementText,
-        voice: 'onyx',
+      const { audio } = await blink.functions.invoke('softball-voice', {
+        body: { number, name }
       })
+
+      if (!audio) throw new Error('No audio returned from server')
+
+      // Convert base64 to blob URL
+      const byteCharacters = atob(audio)
+      const byteNumbers = new Array(byteCharacters.length)
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i)
+      }
+      const byteArray = new Uint8Array(byteNumbers)
+      const blob = new Blob([byteArray], { type: 'audio/mpeg' })
+      const url = URL.createObjectURL(blob)
 
       // Cache the URL and play it
       announcementCache.current.set(cacheKey, url)
@@ -152,18 +164,8 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
       toast.success('Announcement ready!')
     } catch (error: unknown) {
       console.error('Generation failed:', error)
-      // If auth error slipped through, trigger login
-      const isAuthErr =
-        (error as { code?: string })?.code === 'HTTP 401' ||
-        (error as { message?: string })?.message?.includes('401') ||
-        (error as { details?: { originalError?: { code?: string } } })?.details?.originalError?.code === 'HTTP 401'
-      if (isAuthErr) {
-        toast('Sign in required for AI announcements', { icon: '🔒' })
-        blink.auth.login(window.location.href)
-      } else {
-        const msg = error instanceof Error ? error.message : String(error)
-        toast.error(`Failed to generate: ${msg}`)
-      }
+      const msg = error instanceof Error ? error.message : String(error)
+      toast.error(`Failed to generate: ${msg}`)
     } finally {
       setIsGenerating(false)
     }
@@ -223,6 +225,7 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
       const file = new File([audioBlob], 'recording.webm', { type: 'audio/webm' })
       const { publicUrl } = await blink.storage.upload(file, path)
       setAudioUrl(publicUrl)
+      setAudioFileName('recording.webm')
       toast.success('Walkup music recorded!')
     } catch (error: unknown) {
       console.error('Save failed:', error)
@@ -238,24 +241,24 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
   const isCached = announcementCache.current.has(cacheKey)
 
   return (
-    <Card className="group relative overflow-hidden border-2 border-primary/10 hover:border-primary transition-all duration-500 hover:shadow-[0_0_30px_rgba(100,255,0,0.15)] bg-card">
+    <Card className="group relative overflow-hidden border border-primary/10 hover:border-primary transition-all duration-300 hover:shadow-[0_0_15px_rgba(100,255,0,0.1)] bg-card">
       <CardContent className="p-0">
         {/* Announcement Toggle Bar */}
-        <div className="p-3 bg-black/40 border-b border-primary/10 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="p-1.5 bg-black/40 border-b border-primary/10 flex items-center justify-between gap-1">
+          <div className="flex items-center gap-1.5">
             {aiMode ? (
-              <Sparkles className="w-4 h-4 text-primary" />
+              <Sparkles className="w-3 h-3 text-primary" />
             ) : (
-              <Mic className="w-4 h-4 text-primary" />
+              <Mic className="w-3 h-3 text-primary" />
             )}
-            <Label htmlFor={`ai-mode-${id}`} className="text-[10px] uppercase font-black tracking-widest text-muted-foreground cursor-pointer select-none">
-              {aiMode ? 'AI ANNOUNCE' : 'RECORD'}
+            <Label htmlFor={`ai-mode-${id}`} className="text-[8px] uppercase font-black tracking-widest text-muted-foreground cursor-pointer select-none">
+              {aiMode ? 'AI' : 'REC'}
             </Label>
             <Switch
               id={`ai-mode-${id}`}
               checked={aiMode}
               onCheckedChange={setAiMode}
-              className="data-[state=checked]:bg-primary"
+              className="scale-75 data-[state=checked]:bg-primary"
             />
           </div>
 
@@ -265,30 +268,18 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
               variant={isAnnouncementPlaying ? 'default' : isCached ? 'secondary' : 'outline'}
               onClick={generateAnnouncement}
               disabled={isGenerating}
-              className={`h-8 px-3 rounded-full text-[10px] font-black uppercase tracking-tighter transition-all ${
+              className={`h-6 px-2 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all ${
                 isAnnouncementPlaying ? 'bg-primary text-black animate-pulse shadow-[0_0_15px_rgba(100,255,0,0.5)]' : ''
               }`}
             >
               {isGenerating ? (
-                <>
-                  <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
-                  GEN...
-                </>
+                '...'
               ) : isAnnouncementPlaying ? (
-                <>
-                  <Sparkles className="w-3 h-3 mr-1" />
-                  PLAYING
-                </>
+                'PLAYING'
               ) : isCached ? (
-                <>
-                  <Play className="w-3 h-3 mr-1" />
-                  READY
-                </>
+                'READY'
               ) : (
-                <>
-                  <Sparkles className="w-3 h-3 mr-1" />
-                  GENERATE
-                </>
+                'GENERATE'
               )}
             </Button>
           ) : (
@@ -297,41 +288,32 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
               variant={isRecording ? 'destructive' : 'outline'}
               onClick={toggleRecording}
               disabled={isUploading}
-              className="h-8 px-3 rounded-full text-[10px] font-black uppercase tracking-tighter"
+              className="h-6 px-2 rounded-full text-[8px] font-black uppercase tracking-tighter"
             >
               {isRecording ? (
-                <>
-                  <MicOff className="w-3 h-3 mr-1" />
-                  STOP
-                </>
+                'STOP'
               ) : isUploading ? (
-                <>
-                  <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
-                  SAVING...
-                </>
+                '...'
               ) : (
-                <>
-                  <Mic className="w-3 h-3 mr-1" />
-                  START REC
-                </>
+                'REC'
               )}
             </Button>
           )}
         </div>
 
         {/* Card Header - Black/Panthers Aesthetic */}
-        <div className="bg-black p-6 text-center relative overflow-hidden">
+        <div className="bg-black p-3 text-center relative overflow-hidden">
           {/* Faded Panther Background or Design Element */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16" />
+          <div className="absolute top-0 right-0 w-16 h-16 bg-primary/5 rounded-full blur-2xl -mr-8 -mt-8" />
           
-          <div className="flex justify-center mb-4 relative z-10">
-            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary shadow-[0_0_20px_rgba(100,255,0,0.2)]">
-              <Music className="w-10 h-10 text-primary" />
+          <div className="flex justify-center mb-1 relative z-10">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center border border-primary/50">
+              <Music className="w-5 h-5 text-primary" />
             </div>
           </div>
 
           {/* Player Number */}
-          <div className="mb-2 relative z-10">
+          <div className="mb-0.5 relative z-10">
             {isEditingNumber ? (
               <Input
                 type="text"
@@ -340,15 +322,14 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
                 onBlur={() => setIsEditingNumber(false)}
                 onKeyDown={(e) => e.key === 'Enter' && setIsEditingNumber(false)}
                 placeholder="00"
-                className="w-24 mx-auto text-center text-4xl font-black bg-white/5 border-primary/30 text-primary placeholder:text-white/20 focus:ring-2 focus:ring-primary h-16"
+                className="w-16 mx-auto text-center text-xl font-black bg-white/5 border-primary/30 text-primary h-8"
                 maxLength={2}
                 autoFocus
               />
             ) : (
               <button
                 onClick={() => setIsEditingNumber(true)}
-                className="text-7xl font-black text-white italic tracking-tighter hover:text-primary transition-all cursor-pointer drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] outline-text-primary"
-                style={{ WebkitTextStroke: '1px rgba(100,255,0,0.3)' }}
+                className="text-4xl font-black text-white italic tracking-tighter hover:text-primary transition-all cursor-pointer"
               >
                 {number || '00'}
               </button>
@@ -364,14 +345,14 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
                 onChange={(e) => setName(e.target.value)}
                 onBlur={() => setIsEditingName(false)}
                 onKeyDown={(e) => e.key === 'Enter' && setIsEditingName(false)}
-                placeholder="Player Name"
-                className="text-xl font-bold bg-white/5 border-primary/30 text-white placeholder:text-white/20 focus:ring-2 focus:ring-primary text-center h-12"
+                placeholder="Name"
+                className="text-xs font-bold bg-white/5 border-primary/30 text-white text-center h-8"
                 autoFocus
               />
             ) : (
               <button
                 onClick={() => setIsEditingName(true)}
-                className="text-2xl font-black text-primary uppercase tracking-tight hover:scale-105 transition-transform cursor-pointer block w-full truncate italic"
+                className="text-sm font-black text-primary uppercase tracking-tight hover:scale-105 transition-transform cursor-pointer block w-full truncate italic"
               >
                 {name || 'ADD NAME'}
               </button>
@@ -380,40 +361,41 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
         </div>
 
         {/* Walkup Music Controls */}
-        <div className="p-6 space-y-4 bg-zinc-900/50">
+        <div className="p-3 space-y-2 bg-zinc-900/50">
           {audioUrl ? (
             <>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <Button
                   onClick={handlePlay}
-                  className={`flex-1 h-14 rounded-xl font-black uppercase italic tracking-wider transition-all duration-300 ${
+                  size="sm"
+                  className={`flex-1 h-10 rounded-lg font-black uppercase italic tracking-wider text-[10px] ${
                     isPlaying
                       ? 'bg-primary text-black shadow-[0_0_20px_rgba(100,255,0,0.4)] scale-[1.02]'
                       : 'bg-zinc-800 hover:bg-primary hover:text-black text-primary border border-primary/20'
                   }`}
                 >
                   {isPlaying ? (
-                    <><Pause className="w-6 h-6 mr-2 fill-current" />PLAYING...</>
+                    <>PAUSE</>
                   ) : (
-                    <><Play className="w-6 h-6 mr-2 fill-current" />WALKUP</>
+                    <>WALKUP</>
                   )}
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
                   onClick={handleRemoveAudio}
-                  className="h-14 w-14 rounded-xl border-destructive/20 text-destructive hover:bg-destructive hover:text-white transition-colors"
+                  className="h-10 w-10 rounded-lg border-destructive/20 text-destructive hover:bg-destructive hover:text-white transition-colors"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-4 h-4" />
                 </Button>
               </div>
-              <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                Audio Loaded
+              <div className="flex items-center justify-center gap-1.5 text-[8px] font-bold text-muted-foreground uppercase tracking-widest truncate max-w-full px-1">
+                <div className="w-1 h-1 rounded-full bg-primary animate-pulse shrink-0" />
+                <span className="truncate">{audioFileName || 'Audio Loaded'}</span>
               </div>
             </>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -425,18 +407,21 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
                 variant="outline"
-                className="w-full h-14 rounded-xl border-dashed border-2 border-primary/20 hover:border-primary/60 hover:bg-primary/5 transition-all text-muted-foreground hover:text-primary font-bold uppercase text-[10px] tracking-widest"
+                className="w-full h-10 rounded-lg border-dashed border border-primary/20 hover:border-primary/60 hover:bg-primary/5 transition-all text-muted-foreground hover:text-primary font-bold uppercase text-[8px] tracking-widest"
               >
                 {isUploading ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" />
+                    <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin mr-1" />
                     UPLOADING...
                   </>
                 ) : (
-                  <><Upload className="w-4 h-4 mr-2" />UPLOAD WALKUP</>
+                  <>
+                    <Upload className="w-3 h-3 mr-1" />
+                    UPLOAD
+                  </>
                 )}
               </Button>
-              <p className="text-[10px] font-medium text-center text-muted-foreground/60 uppercase">
+              <p className="text-[8px] font-medium text-center text-muted-foreground/60 uppercase">
                 MP3 / WAV / M4A (10MB)
               </p>
             </div>
