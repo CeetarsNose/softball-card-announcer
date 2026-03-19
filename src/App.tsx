@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { PlayerCard } from '@/components/PlayerCard'
+import { SituationCard } from '@/components/SituationCard'
 import { Button } from '@/components/ui/button'
-import { Plus, Volume2, Trophy, X } from 'lucide-react'
+import { Plus, Volume2, Trophy, X, Music } from 'lucide-react'
 
 function App() {
   const [playerCount, setPlayerCount] = useState(9)
+  const [situationCount, setSituationCount] = useState(4)
 
   const playerIds = Array.from({ length: playerCount }, (_, i) => `player-${i + 1}`)
+  const situationIds = Array.from({ length: situationCount }, (_, i) => `situation-${i + 1}`)
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
@@ -38,7 +41,7 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-[1600px] mx-auto px-4 py-6">
+      <main className="max-w-[1800px] mx-auto px-4 py-6">
         {/* Banner Strip */}
         <div className="bg-primary text-black py-1.5 px-4 mb-8 transform -skew-x-12 shadow-[0_5px_15px_rgba(100,255,0,0.2)]">
           <p className="text-center font-black uppercase tracking-[0.3em] italic text-xs animate-pulse">
@@ -76,51 +79,103 @@ function App() {
           </div>
         </div>
 
-        {/* Player Cards Grid - Denser for 12+ on page */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 mb-6">
-          {playerIds.map((id, index) => (
-            <div
-              key={id}
-              className="animate-fade-in"
-              style={{ animationDelay: `${index * 30}ms` }}
-            >
-              <PlayerCard id={id} />
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Left Column: Player Cards */}
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-4 px-2">
+              <h2 className="text-xl font-black text-white uppercase italic tracking-tighter">
+                Player <span className="text-primary">Roster</span>
+              </h2>
+              <div className="flex items-center gap-2">
+                <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Players</p>
+                <div className="flex items-center bg-black border border-primary/20 rounded-lg p-0.5">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => playerCount > 1 && setPlayerCount(prev => prev - 1)}
+                    className="h-7 w-7 text-primary hover:bg-primary/10"
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                  <span className="w-8 text-center text-sm font-black text-white italic">{playerCount}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => playerCount < 20 && setPlayerCount(prev => prev + 1)}
+                    className="h-7 w-7 text-primary hover:bg-primary/10"
+                  >
+                    <Plus className="w-3 h-3" />
+                  </Button>
+                </div>
+              </div>
             </div>
-          ))}
-        </div>
 
-        {/* Add/Remove Players - More compact */}
-        <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mt-8 pt-6 border-t border-primary/10">
-          <div className="flex items-center gap-3">
-            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Roster Size</p>
-            <div className="flex items-center bg-black border border-primary/20 rounded-lg p-0.5 shadow-inner">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => playerCount > 1 && setPlayerCount(prev => prev - 1)}
-                className="h-8 w-8 text-primary hover:bg-primary/10 hover:text-primary"
-              >
-                <X className="w-3.5 h-3.5" />
-              </Button>
-              <span className="w-10 text-center text-lg font-black text-white italic">{playerCount}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => playerCount < 20 && setPlayerCount(prev => prev + 1)}
-                className="h-8 w-8 text-primary hover:bg-primary/10 hover:text-primary"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </Button>
+            {/* Player Cards Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 mb-6">
+              {playerIds.map((id, index) => (
+                <div
+                  key={id}
+                  className="animate-fade-in"
+                  style={{ animationDelay: `${index * 30}ms` }}
+                >
+                  <PlayerCard id={id} />
+                </div>
+              ))}
             </div>
           </div>
-          
+
+          {/* Right Column: Situation Cards */}
+          <div className="w-full lg:w-72 shrink-0">
+            <div className="flex items-center justify-between mb-4 px-2">
+              <h2 className="text-xl font-black text-white uppercase italic tracking-tighter">
+                Game <span className="text-primary">SFX</span>
+              </h2>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => situationCount < 12 && setSituationCount(prev => prev + 1)}
+                  className="h-7 w-7 text-primary border border-primary/20 hover:bg-primary/10"
+                >
+                  <Plus className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
+              {situationIds.map((id, index) => (
+                <div
+                  key={id}
+                  className="animate-fade-in"
+                  style={{ animationDelay: `${(index + playerCount) * 30}ms` }}
+                >
+                  <SituationCard id={id} />
+                </div>
+              ))}
+            </div>
+
+            {situationCount > 1 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSituationCount(prev => prev - 1)}
+                className="w-full mt-4 text-[9px] font-black uppercase text-destructive/50 hover:text-destructive hover:bg-destructive/5"
+              >
+                Remove Last SFX Card
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom Actions */}
+        <div className="mt-8 pt-6 border-t border-primary/10 flex justify-center">
           <Button
             size="sm"
             onClick={() => setPlayerCount(prev => Math.min(prev + 1, 20))}
-            className="rounded-lg h-10 px-6 bg-primary hover:bg-primary-glow text-black font-black uppercase italic tracking-wider shadow-[0_0_15px_rgba(100,255,0,0.2)] transition-all hover:scale-105 active:scale-95"
+            className="rounded-lg h-10 px-8 bg-primary hover:bg-primary-glow text-black font-black uppercase italic tracking-wider shadow-[0_0_15px_rgba(100,255,0,0.2)] transition-all hover:scale-105 active:scale-95"
           >
             <Plus className="w-5 h-5 mr-2" />
-            Add Player
+            Add New Player
           </Button>
         </div>
       </main>
