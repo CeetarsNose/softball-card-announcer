@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { PlayerCard } from '@/components/PlayerCard'
 import { SituationCard } from '@/components/SituationCard'
 import { Button } from '@/components/ui/button'
-import { Plus, Volume2, Trophy, X, Music } from 'lucide-react'
+import { Plus, Volume2, Trophy, X, Music, Bluetooth } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 function App() {
   const [playerCount, setPlayerCount] = useState(9)
@@ -11,6 +12,26 @@ function App() {
   const playerIds = Array.from({ length: playerCount }, (_, i) => `player-${i + 1}`)
   const situationIds = Array.from({ length: situationCount }, (_, i) => `situation-${i + 1}`)
 
+  const handleBluetoothPairing = async () => {
+    // Check for Audio Output Devices API support
+    if ('mediaDevices' in navigator && 'selectAudioOutput' in (navigator.mediaDevices as any)) {
+      try {
+        // @ts-ignore
+        await (navigator.mediaDevices as any).selectAudioOutput()
+        toast.success('Audio output selection opened')
+      } catch (err: any) {
+        if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
+          console.error('Error selecting audio output:', err)
+          toast.error('Could not open audio output selection')
+        }
+      }
+    } else {
+      toast.error('Browser device selection not supported. Please use OS settings to pair Bluetooth.', {
+        duration: 5000,
+      })
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
       {/* Header */}
@@ -18,8 +39,8 @@ function App() {
         {/* Subtle Background Pattern or Glow */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(100,255,0,0.1)_0%,transparent_70%)]" />
         
-        <div className="max-w-6xl mx-auto relative z-10">
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-2">
+        <div className="max-w-6xl mx-auto relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4">
             <div className="relative">
               <div className="absolute -inset-1 bg-primary rounded-full blur opacity-30 animate-pulse" />
               <img 
@@ -37,6 +58,14 @@ function App() {
               </p>
             </div>
           </div>
+
+          <Button
+            onClick={handleBluetoothPairing}
+            className="bg-zinc-900 border border-primary/30 text-primary hover:bg-primary hover:text-black font-black uppercase italic tracking-wider rounded-xl h-12 px-6 transition-all group"
+          >
+            <Bluetooth className="w-5 h-5 mr-2 group-hover:animate-pulse" />
+            Pair Bluetooth Speaker
+          </Button>
         </div>
       </header>
 
