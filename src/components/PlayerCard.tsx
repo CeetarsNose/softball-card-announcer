@@ -16,18 +16,55 @@ interface PlayerCardProps {
 }
 
 export function PlayerCard({ id, initialName = '', initialNumber = '', initialAudioUrl = '' }: PlayerCardProps) {
-  const [name, setName] = useState(initialName)
-  const [number, setNumber] = useState(initialNumber)
-  const [audioUrl, setAudioUrl] = useState(initialAudioUrl)
-  const [audioFileName, setAudioFileName] = useState('')
+  const [name, setName] = useState(() => {
+    const saved = localStorage.getItem(`player-name-${id}`)
+    return saved !== null ? saved : initialName
+  })
+  const [number, setNumber] = useState(() => {
+    const saved = localStorage.getItem(`player-number-${id}`)
+    return saved !== null ? saved : initialNumber
+  })
+  const [audioUrl, setAudioUrl] = useState(() => {
+    const saved = localStorage.getItem(`player-audioUrl-${id}`)
+    return saved !== null ? saved : initialAudioUrl
+  })
+  const [audioFileName, setAudioFileName] = useState(() => {
+    const saved = localStorage.getItem(`player-audioFileName-${id}`)
+    return saved !== null ? saved : ''
+  })
   const [isPlaying, setIsPlaying] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
-  const [isEditingName, setIsEditingName] = useState(!initialName)
-  const [isEditingNumber, setIsEditingNumber] = useState(!initialNumber)
+  const [isEditingName, setIsEditingName] = useState(!name)
+  const [isEditingNumber, setIsEditingNumber] = useState(!number)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   // Announcement mode: true = AI TTS, false = User Recording
-  const [aiMode, setAiMode] = useState(true)
+  const [aiMode, setAiMode] = useState(() => {
+    const saved = localStorage.getItem(`player-aiMode-${id}`)
+    return saved !== null ? saved === 'true' : true
+  })
+  
+  // Persist state to localStorage
+  useEffect(() => {
+    localStorage.setItem(`player-name-${id}`, name)
+  }, [name, id])
+
+  useEffect(() => {
+    localStorage.setItem(`player-number-${id}`, number)
+  }, [number, id])
+
+  useEffect(() => {
+    localStorage.setItem(`player-audioUrl-${id}`, audioUrl)
+  }, [audioUrl, id])
+
+  useEffect(() => {
+    localStorage.setItem(`player-audioFileName-${id}`, audioFileName)
+  }, [audioFileName, id])
+
+  useEffect(() => {
+    localStorage.setItem(`player-aiMode-${id}`, String(aiMode))
+  }, [aiMode, id])
+
   const [isRecording, setIsRecording] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
 

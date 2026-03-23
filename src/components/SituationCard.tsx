@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -12,15 +12,37 @@ interface SituationCardProps {
 }
 
 export function SituationCard({ id, initialDescription = '' }: SituationCardProps) {
-  const [description, setDescription] = useState(initialDescription)
-  const [audioUrl, setAudioUrl] = useState('')
-  const [audioFileName, setAudioFileName] = useState('')
+  const [description, setDescription] = useState(() => {
+    const saved = localStorage.getItem(`situation-description-${id}`)
+    return saved !== null ? saved : initialDescription
+  })
+  const [audioUrl, setAudioUrl] = useState(() => {
+    const saved = localStorage.getItem(`situation-audioUrl-${id}`)
+    return saved !== null ? saved : ''
+  })
+  const [audioFileName, setAudioFileName] = useState(() => {
+    const saved = localStorage.getItem(`situation-audioFileName-${id}`)
+    return saved !== null ? saved : ''
+  })
   const [isPlaying, setIsPlaying] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
-  const [isEditingDescription, setIsEditingDescription] = useState(!initialDescription)
+  const [isEditingDescription, setIsEditingDescription] = useState(!description)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Persist state to localStorage
+  useEffect(() => {
+    localStorage.setItem(`situation-description-${id}`, description)
+  }, [description, id])
+
+  useEffect(() => {
+    localStorage.setItem(`situation-audioUrl-${id}`, audioUrl)
+  }, [audioUrl, id])
+
+  useEffect(() => {
+    localStorage.setItem(`situation-audioFileName-${id}`, audioFileName)
+  }, [audioFileName, id])
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
