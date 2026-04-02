@@ -10,14 +10,24 @@ import toast from 'react-hot-toast'
 interface Team {
   id: string
   name: string
-  playerCount: number
-  situationCount: number
+  playerIds: string[]
+  situationIds: string[]
 }
 
 function App() {
   const [teams, setTeams] = useState<Team[]>(() => {
     const saved = localStorage.getItem('softball-teams')
-    return saved ? JSON.parse(saved) : [{ id: 'default', name: 'Panthers', playerCount: 9, situationCount: 4 }]
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      // Migration: convert playerCount/situationCount to Ids arrays if needed
+      return parsed.map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        playerIds: t.playerIds || Array.from({ length: t.playerCount || 9 }, (_, i) => `${t.id}-player-${Date.now()}-${i + 1}`),
+        situationIds: t.situationIds || Array.from({ length: t.situationCount || 4 }, (_, i) => `${t.id}-situation-${Date.now()}-${i + 1}`)
+      }))
+    }
+    return [{ id: 'default', name: 'Panthers', playerIds: Array.from({ length: 9 }, (_, i) => `default-player-${i + 1}`), situationIds: Array.from({ length: 4 }, (_, i) => `default-situation-${i + 1}`) }]
   })
   const [activeTeamId, setActiveTeamId] = useState(() => {
     const saved = localStorage.getItem('softball-active-team-id')
@@ -35,9 +45,6 @@ function App() {
   }, [activeTeamId])
 
   const activeTeam = teams.find(t => t.id === activeTeamId) || teams[0]
-
-  const playerIds = Array.from({ length: activeTeam.playerCount }, (_, i) => `${activeTeam.id}-player-${i + 1}`)
-  const situationIds = Array.from({ length: activeTeam.situationCount }, (_, i) => `${activeTeam.id}-situation-${i + 1}`)
 
   const handleBluetoothPairing = async () => {
     // Check for Audio Output Devices API support
@@ -64,8 +71,8 @@ function App() {
     const newTeam: Team = {
       id: newId,
       name: `New Team ${teams.length + 1}`,
-      playerCount: 9,
-      situationCount: 4
+      playerIds: Array.from({ length: 9 }, (_, i) => `${newId}-player-${i + 1}`),
+      situationIds: Array.from({ length: 4 }, (_, i) => `${newId}-situation-${i + 1}`)
     }
     setTeams([...teams, newTeam])
     setActiveTeamId(newId)
@@ -91,24 +98,54 @@ function App() {
     setIsEditingTeamName(false)
   }
 
-  const updatePlayerCount = (delta: number) => {
+  const handleAddPlayer = () => {
     setTeams(teams.map(t => {
       if (t.id === activeTeamId) {
-        const newCount = Math.max(1, Math.min(20, t.playerCount + delta))
-        return { ...t, playerCount: newCount }
+        return { ...t, playerIds: [...t.playerIds, `${t.id}-player-${Date.now()}`] }
       }
       return t
     }))
+    toast.success('Player added')
   }
 
-  const updateSituationCount = (delta: number) => {
+  const handleDeletePlayer = (playerId: string) => {
     setTeams(teams.map(t => {
       if (t.id === activeTeamId) {
-        const newCount = Math.max(1, Math.min(12, t.situationCount + delta))
-        return { ...t, situationCount: newCount }
+        return { ...t, playerIds: t.playerIds.filter(id => id !== playerId) }
       }
       return t
     }))
+    // Clean up localStorage for this card
+    localStorage.removeItem(`player-name-${playerId}`)
+    localStorage.removeItem(`player-number-${playerId}`)
+    localStorage.removeItem(`player-audioUrl-${playerId}`)
+    localStorage.removeItem(`player-audioFileName-${playerId}`)
+    localStorage.removeItem(`player-aiMode-${playerId}`)
+    toast.success('Player removed')
+  }
+
+  const handleAddSituation = () => {
+    setTeams(teams.map(t => {
+      if (t.id === activeTeamId) {
+        return { ...t, situationIds: [...t.situationIds, `${t.id}-situation-${Date.now()}`] }
+      }
+      return t
+    }))
+    toast.success('SFX card added')
+  }
+
+  const handleDeleteSituation = (situationId: string) => {
+    setTeams(teams.map(t => {
+      if (t.id === activeTeamId) {
+        return { ...t, situationIds: t.situationIds.filter(id => id !== situationId) }
+      }
+      return t
+    }))
+    // Clean up localStorage for this card
+    localStorage.removeItem(`situation-description-${situationId}`)
+    localStorage.removeItem(`situation-audioUrl-${situationId}`)
+    localStorage.removeItem(`situation-audioFileName-${situationId}`)
+    toast.success('SFX card removed')
   }
 
   return (
@@ -239,19 +276,11 @@ function App() {
                     <div className="flex items-center gap-2">
                       <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Players</p>
                       <div className="flex items-center bg-black border border-primary/20 rounded-lg p-0.5">
+                        <span className="w-12 text-center text-sm font-black text-white italic">{team.playerIds.length}</span>
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => updatePlayerCount(-1)}
-                          className="h-7 w-7 text-primary hover:bg-primary/10"
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
-                        <span className="w-8 text-center text-sm font-black text-white italic">{team.playerCount}</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => updatePlayerCount(1)}
+                          onClick={handleAddPlayer}
                           className="h-7 w-7 text-primary hover:bg-primary/10"
                         >
                           <Plus className="w-3 h-3" />
@@ -262,18 +291,15 @@ function App() {
 
                   {/* Player Cards Grid */}
                   <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 mb-6">
-                    {Array.from({ length: team.playerCount }).map((_, index) => {
-                      const cardId = `${team.id}-player-${index + 1}`
-                      return (
-                        <div
-                          key={cardId}
-                          className="animate-fade-in"
-                          style={{ animationDelay: `${index * 30}ms` }}
-                        >
-                          <PlayerCard id={cardId} />
-                        </div>
-                      )
-                    })}
+                    {team.playerIds.map((playerId, index) => (
+                      <div
+                        key={playerId}
+                        className="animate-fade-in"
+                        style={{ animationDelay: `${index * 30}ms` }}
+                      >
+                        <PlayerCard id={playerId} onDelete={() => handleDeletePlayer(playerId)} />
+                      </div>
+                    ))}
                   </div>
                 </div>
 
@@ -287,7 +313,7 @@ function App() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => updateSituationCount(1)}
+                        onClick={handleAddSituation}
                         className="h-7 w-7 text-primary border border-primary/20 hover:bg-primary/10"
                       >
                         <Plus className="w-3 h-3" />
@@ -296,30 +322,16 @@ function App() {
                   </div>
 
                   <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
-                    {Array.from({ length: team.situationCount }).map((_, index) => {
-                      const cardId = `${team.id}-situation-${index + 1}`
-                      return (
-                        <div
-                          key={cardId}
-                          className="animate-fade-in"
-                          style={{ animationDelay: `${(index + team.playerCount) * 30}ms` }}
-                        >
-                          <SituationCard id={cardId} />
-                        </div>
-                      )
-                    })}
+                    {team.situationIds.map((situationId, index) => (
+                      <div
+                        key={situationId}
+                        className="animate-fade-in"
+                        style={{ animationDelay: `${(index + team.playerIds.length) * 30}ms` }}
+                      >
+                        <SituationCard id={situationId} onDelete={() => handleDeleteSituation(situationId)} />
+                      </div>
+                    ))}
                   </div>
-
-                  {team.situationCount > 1 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => updateSituationCount(-1)}
-                      className="w-full mt-4 text-[9px] font-black uppercase text-destructive/50 hover:text-destructive hover:bg-destructive/5"
-                    >
-                      Remove Last SFX Card
-                    </Button>
-                  )}
                 </div>
               </div>
             </TabsContent>
@@ -330,7 +342,7 @@ function App() {
         <div className="mt-8 pt-6 border-t border-primary/10 flex justify-center">
           <Button
             size="sm"
-            onClick={() => updatePlayerCount(1)}
+            onClick={handleAddPlayer}
             className="rounded-lg h-10 px-8 bg-primary hover:bg-primary-glow text-black font-black uppercase italic tracking-wider shadow-[0_0_15px_rgba(100,255,0,0.2)] transition-all hover:scale-105 active:scale-95"
           >
             <Plus className="w-5 h-5 mr-2" />

@@ -4,18 +4,30 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { Upload, Play, Pause, X, Music, Mic, MicOff, Sparkles } from 'lucide-react'
+import { Upload, Play, Pause, X, Music, Mic, MicOff, Sparkles, Trash2 } from 'lucide-react'
 import { blink } from '@/lib/blink'
 import toast from 'react-hot-toast'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 interface PlayerCardProps {
   id: string
   initialName?: string
   initialNumber?: string
   initialAudioUrl?: string
+  onDelete?: () => void
 }
 
-export function PlayerCard({ id, initialName = '', initialNumber = '', initialAudioUrl = '' }: PlayerCardProps) {
+export function PlayerCard({ id, initialName = '', initialNumber = '', initialAudioUrl = '', onDelete }: PlayerCardProps) {
   const [name, setName] = useState(() => {
     const saved = localStorage.getItem(`player-name-${id}`)
     return saved !== null ? saved : initialName
@@ -299,43 +311,65 @@ export function PlayerCard({ id, initialName = '', initialNumber = '', initialAu
             />
           </div>
 
-          {aiMode ? (
-            <Button
-              size="sm"
-              variant={isAnnouncementPlaying ? 'default' : isCached ? 'secondary' : 'outline'}
-              onClick={generateAnnouncement}
-              disabled={isGenerating}
-              className={`h-6 px-2 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all ${
-                isAnnouncementPlaying ? 'bg-primary text-black animate-pulse shadow-[0_0_15px_rgba(100,255,0,0.5)]' : ''
-              }`}
-            >
-              {isGenerating ? (
-                '...'
-              ) : isAnnouncementPlaying ? (
-                'PLAYING'
-              ) : isCached ? (
-                'READY'
-              ) : (
-                'GENERATE'
-              )}
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              variant={isRecording ? 'destructive' : 'outline'}
-              onClick={toggleRecording}
-              disabled={isUploading}
-              className="h-6 px-2 rounded-full text-[8px] font-black uppercase tracking-tighter"
-            >
-              {isRecording ? (
-                'STOP'
-              ) : isUploading ? (
-                '...'
-              ) : (
-                'REC'
-              )}
-            </Button>
-          )}
+          <div className="flex items-center gap-1">
+            {aiMode ? (
+              <Button
+                size="sm"
+                variant={isAnnouncementPlaying ? 'default' : isCached ? 'secondary' : 'outline'}
+                onClick={generateAnnouncement}
+                disabled={isGenerating}
+                className={`h-6 px-2 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all ${
+                  isAnnouncementPlaying ? 'bg-primary text-black animate-pulse shadow-[0_0_15px_rgba(100,255,0,0.5)]' : ''
+                }`}
+              >
+                {isGenerating ? (
+                  '...'
+                ) : isAnnouncementPlaying ? (
+                  'PLAYING'
+                ) : isCached ? (
+                  'READY'
+                ) : (
+                  'GENERATE'
+                )}
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant={isRecording ? 'destructive' : 'outline'}
+                onClick={toggleRecording}
+                disabled={isUploading}
+                className="h-6 px-2 rounded-full text-[8px] font-black uppercase tracking-tighter"
+              >
+                {isRecording ? (
+                  'STOP'
+                ) : isUploading ? (
+                  '...'
+                ) : (
+                  'REC'
+                )}
+              </Button>
+            )}
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 rounded-full">
+                  <X className="h-3 w-3" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-zinc-950 border-primary/20 text-white">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="font-black uppercase italic tracking-tighter">Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription className="text-zinc-400">
+                    This will permanently delete the player card for <span className="text-primary font-bold">{name || 'this player'}</span> and remove all associated audio settings.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="bg-zinc-900 border-zinc-800 text-white hover:bg-zinc-800">Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={onDelete} className="bg-destructive text-white hover:bg-destructive/90">Delete Player</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
 
         {/* Card Header - Black/Panthers Aesthetic */}
